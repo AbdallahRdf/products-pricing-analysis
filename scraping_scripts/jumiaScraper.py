@@ -53,7 +53,7 @@ def scrape_data(url: str, headers: dict, category: str):
             section = soup.select_one('section[class="card -fh"]')
             section = section if section else soup.select_one("[class='prd-w col8 row _2c -paxs']")
             if not section:
-                logging.error(soup.prettify())  # Print the first 1000 characters of the response
+                # logging.error(soup.prettify())  # Print the first 1000 characters of the response
                 print(f"No products found on page {page_number} for {category} - {url=}")
                 break
 
@@ -62,7 +62,7 @@ def scrape_data(url: str, headers: dict, category: str):
             for a_tag in a_tags:
                 a_tag_href = a_tag.get("href").strip() if a_tag.get("href") else ""
                 if a_tag_href.endswith(".html"):
-                    time.sleep(random.uniform(5, 10))
+                    time.sleep(random.uniform(4, 8))
                     headers["User-Agent"] = random.choice(user_agents)
                     page = get_with_retries(f"{base_url}/{a_tag_href}", headers=headers)
                     if page.status_code == 200:
@@ -74,7 +74,7 @@ def scrape_data(url: str, headers: dict, category: str):
 
         except Exception as e:
             current_time = datetime.now()
-            print(f"Error scraping page {page_number} of {category}:")
+            print(f"Error while scraping jumia, page {page_number} of {category}:")
             print(e)
             logging.error(f"{current_time} : Error on page {page_number} of {category}: {url}:")
             logging.error(e)
@@ -94,10 +94,16 @@ def main():
     }
 
     for category, url in categories.items():
-        scrape_data(url, headers=headers, category=category)
-        print(f"scraping data finished successfully for category '{category}' in jumia")
+        if os.path.exists(f"data/jumia_{category}.csv"): # if file exists:
+            with open(f"data/jumia_{category}.csv", mode="r") as file:
+                if file.read(1): # if file is not empty
+                    # ensure that the headers are not written to the csv file as it is not empty
+                    processed_categories.add(category)
 
-    print("scraping data finished successfully for jumia")
+        scrape_data(url, headers=headers, category=category)
+        print(f"scraping data finished for category '{category}' in jumia")
+
+    print("scraping data finished for jumia")
 
 if __name__ == "__main__":
     main()

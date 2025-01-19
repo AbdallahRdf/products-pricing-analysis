@@ -57,25 +57,21 @@ def scrape_data(url: str, headers: dict, category: str):
 
     while True:
         try:
-            if url in visited_urls:
-                print(f"Skipping already visited page: {url}")
-                continue
             response = get_with_retries(url, headers=headers)
             if response.status_code != 200:
                 is_error = True
                 print(f"Error fetching {url}: Status code {response.status_code}")
                 break
             
-            visited_urls.add(current_url)
             soup = BeautifulSoup(response.text, "html.parser")
-            section = soup.select_one('section[class="card -fh"]')
-            section = section if section else soup.select_one("[class='prd-w col8 row _2c -paxs']")
-            if not section:
+            products_list = soup.select_one('section[class="card -fh"]')
+            products_list = products_list if products_list else soup.select_one("[class='prd-w col8 row _2c -paxs']")
+            if not products_list:
                 # logging.error(soup.prettify())  # Print the first 1000 characters of the response
                 print(f"No products found on page {page_number} for {category} - {url=}")
                 break
 
-            a_tags = section.select('a')
+            a_tags = products_list.select('a')
             headers["Referer"] = url  # Update Referer header
             
             for a_tag in a_tags:
@@ -116,12 +112,6 @@ def scrape_data(url: str, headers: dict, category: str):
 def main():
     logging.basicConfig(filename="logs/jumia_scraping_errors.log", level=logging.ERROR)
 
-    if not os.path.exists("./data"):
-        os.mkdir("./data")
-
-    if not os.path.exists("./cache"):
-        os.mkdir("./cache")
-
     categories = {
         "smartphones": "https://www.jumia.ma/telephones-smartphones/?page=1#catalog-listing",
         "laptops": "https://www.jumia.ma/pc-portables/?page=1#catalog-listing",
@@ -146,4 +136,10 @@ def main():
             pass
 
 if __name__ == "__main__":
+    if not os.path.exists("./data"):
+        os.mkdir("./data")
+
+    if not os.path.exists("./cache"):
+        os.mkdir("./cache")
+
     main()

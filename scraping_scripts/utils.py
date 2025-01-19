@@ -6,12 +6,12 @@ import time
 load_dotenv()
 
 # Access environment variable
-username = os.getenv("PROXY_USERNAME")
-password = os.getenv("PROXY_PASSWORD")
+proxy_ip = os.getenv("PROXY_IP")
+proxy_port = os.getenv("PROXY_PORT")
 
 proxy = {
-    "http": f"http://{username}:{password}@161.123.152.115:6360",
-    "https": f"http://{username}:{password}@161.123.152.115:6360"
+    "http": f"http://{proxy_ip}:{proxy_port}",
+    "https": f"http://{proxy_ip}:{proxy_port}"
 }
 
 

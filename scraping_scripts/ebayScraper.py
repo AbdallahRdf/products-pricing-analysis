@@ -5,7 +5,7 @@ from datetime import datetime
 import logging
 import os
 from scraping_scripts.headers import headers, user_agents
-from scraping_scripts.utils import get_with_retries, load_visited_urls, save_to_csv
+from scraping_scripts.utils import get_with_retries, load_visited_urls, save_to_csv, save_visted_url
 
 # extracts a single product data and saves it
 def extract_data(html: str, category: str, data: list):
@@ -138,6 +138,7 @@ def scrape_data(url: str, headers: dict, category: str, max_pages: int, processe
                     extract_data(html=page.text, category=category, data=data)
 
             save_to_csv(file_path=f"data/ebay_{category}.csv", data=data, category=category, processed_categories=processed_categories)
+            save_visted_url(file_path=f"cache/ebay_visited_{category}_urls.txt", visited_urls=visited_urls)
 
             # Move to the next page
             page_number += 1
@@ -147,6 +148,7 @@ def scrape_data(url: str, headers: dict, category: str, max_pages: int, processe
 
         except Exception as e:
             save_to_csv(file_path=f"data/ebay_{category}.csv", data=data, category=category, processed_categories=processed_categories)
+            save_visted_url(file_path=f"cache/ebay_visited_{category}_urls.txt", visited_urls=visited_urls)
             is_error = True
             current_time = datetime.now()
             print(f"Error while scraping ebay, page {page_number} of {category}:")
@@ -154,11 +156,6 @@ def scrape_data(url: str, headers: dict, category: str, max_pages: int, processe
             logging.error(f"{current_time} : Error on page {page_number} of {category}: {url}:")
             logging.error(e)
             break
-        
-    if is_error:
-        # Save visited URL
-        with open(f"cache/ebay_visited_{category}_urls.txt", "a") as f:
-            f.writelines(f"{url}\n" for url in visited_urls)
             
     return is_error
 

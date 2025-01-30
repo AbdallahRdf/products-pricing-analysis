@@ -11,27 +11,7 @@ import logging
 from dotenv import load_dotenv
 import os
 from scraping_scripts.headers import headers
-from scraping_scripts.utils import load_visited_urls, save_to_csv
-
-# define the request interceptor to configure custom headers
-def interceptor(request):
-
-    # add the missing headers
-    request.headers["Accept-Language"] = headers["Accept-Language"]
-    request.headers["Referer"] = headers["Referer"]
-
-    # delete the existing misconfigured default headers values
-    del request.headers["User-Agent"]
-    del request.headers["Sec-Ch-Ua"]
-    del request.headers["Sec-Fetch-Site"]
-    del request.headers["Accept-Encoding"]
-    
-    # replace the deleted headers with edited values
-    request.headers["User-Agent"] = headers["User-Agent"]
-    request.headers["Sec-Ch-Ua"] = "\"Chromium\";v=\"122\", \"Not(A:Brand\";v=\"24\", \"Google Chrome\";v=\"122\""
-    request.headers["Sec-Fetch-Site"] = "cross-site"
-    request.headers["Accept-Encoding"] = "gzip, deflate, br, zstd"
-
+from scraping_scripts.utils import load_visited_urls, save_to_csv, save_visted_url
 
 # extracts a single product data and saves it
 def extract_data(html: str, category: str, data: list):
@@ -42,7 +22,7 @@ def extract_data(html: str, category: str, data: list):
     rows = details_table.select("tr")
 
     # Initialize variables with default values
-    brand = model = screen_size = ram = storage = None
+    brand = model = screen_size = processor = ram = storage = None
 
     for row in rows:
         cols = row.find_all("td")
@@ -58,8 +38,16 @@ def extract_data(html: str, category: str, data: list):
                     screen_size = value
                 case "RAM":
                     ram = value
-                case "Memory Storage Capacity":
+                case "Ram Memory Installed Size":
+                    ram = value
+                case "Memory Storage Capacity": # for smartphones
                     storage = value
+                case "Hard Disk Size": # for laptops
+                    storage = value
+                case "Processor":
+                    processor = value
+                case "CPU Model":
+                    processor = value
     
     discount = soup.select_one('[class="product-old-price"]')
 
@@ -70,6 +58,7 @@ def extract_data(html: str, category: str, data: list):
         "brand": brand,
         "model": model,
         "screen_size": screen_size,
+        "processor": processor,
         "ram": ram,
         "storage": storage,
         "price": price,
@@ -117,6 +106,7 @@ def scrape_data(driver: object, url: str, category: str, max_pages: int, process
                         # print(e, end="\n\n")
         
             save_to_csv(file_path=f"data/ubuy_{category}.csv", data=data, category=category, processed_categories=processed_categories)
+            save_visted_url(file_path=f"cache/ubuy_visited_{category}_urls.txt", visited_urls=visited_urls)
             
             # Move to the next page
             page_number += 1
@@ -126,6 +116,7 @@ def scrape_data(driver: object, url: str, category: str, max_pages: int, process
         
         except Exception as e:
             save_to_csv(file_path=f"data/ubuy_{category}.csv", data=data, category=category, processed_categories=processed_categories)
+            save_visted_url(file_path=f"cache/ubuy_visited_{category}_urls.txt", visited_urls=visited_urls)
             is_error = True
             current_time = datetime.now()
             print(f"Error while scraping ubuy, page {page_number} of {category}:")
@@ -158,11 +149,9 @@ def main():
     })
 
     options = webdriver.ChromeOptions()
-    # options.add_argument("--headless=new")
+    options.add_argument("--headless=new")
     options.proxy = proxy
     driver = webdriver.Chrome(options=options)
-
-    # driver.request_interceptor = interceptor
 
     targets = [
         {
@@ -170,18 +159,16 @@ def main():
             "url": "https://www.ubuy.ma/en/category/mobile-phones-21453?ref=hm-explore-category&page=1",
             "max_pages": 5
         },
-        # {
-        #     "category": "smartphones",
-        #     "url": "https://www.ubuy.ma/en/search/?ref_p=ser_tp&q=iphone&page=1",
-        # },
-        # {
-        #     "category": "laptops",
-        #     "url": "https://www.aliexpress.com/w/wholesale-laptops.html?page=1&g=n&SearchText=laptops",
-        # },
-        # {
-        #     "category": "tablets",
-        #     "url": "https://www.aliexpress.com/w/wholesale-tablets.html?page=1&g=n&SearchText=tablets",
-        # }
+        {
+            "category": "laptops",
+            "url": "https://www.ubuy.ma/en/search/?ref_p=ser_tp&q=laptops&page=1",
+            "max_pages": 5
+        },
+        {
+            "category": "tablets",
+            "url": "https://www.ubuy.ma/en/search/?ref_p=ser_tp&q=tablets&page=1",
+            "max_pages": 5
+        }
     ]
 
     for target in targets:

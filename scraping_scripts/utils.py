@@ -50,3 +50,10 @@ def save_to_csv(file_path: str, data: list, category: str, processed_categories:
         processed_categories.add(category) # ensure headers are only written once
         data.clear()
 
+
+def save_visted_url(file_path: str, visited_urls: set):
+    # Save visited URL
+    with open(file_path, "a") as f:
+        f.writelines(f"{url}\n" for url in visited_urls)
+    visited_urls.clear()
+

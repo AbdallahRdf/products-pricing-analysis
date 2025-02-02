@@ -2,6 +2,7 @@ from selenium import webdriver
 from bs4 import BeautifulSoup
 import random
 import time
+from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime
 import logging
 from dotenv import load_dotenv
@@ -25,7 +26,7 @@ def extract_data(html: str, category: str, data: list):
             key = cols[0].text.strip()
             value = cols[1].text.strip()
             columns[key] = value
-    print(columns)
+
     brand = columns.get("Brand")
     model = columns.get("Model") or columns.get("Series")
     if columns.get("Series") and columns.get("Model"):
@@ -88,7 +89,6 @@ def scrape_data(driver: object, url: str, category: str, proxies: list, max_page
                         time.sleep(random.uniform(2, 4))
                         visited_urls.add(link)
                         extract_data(html=response.text, category=category, data=data)
-                        print(f"\ndata: {data}\n")
                         break
                     except Exception as e:
                         print("retrying to get product details")
@@ -115,6 +115,32 @@ def scrape_data(driver: object, url: str, category: str, proxies: list, max_page
     return is_error
 
 
+def scrape_wrapper(target: dict, proxies: list, processed_categories: set) -> bool:
+    options = webdriver.ChromeOptions()
+    options.add_argument("--headless=new")
+    driver = webdriver.Chrome(options=options)
+
+    print(f"scraping data started for category '{target['category']}' in reliance digital")
+
+    error = scrape_data(
+        driver=driver, 
+        url=target["url"], 
+        category=target["category"], 
+        proxies=proxies, 
+        max_pages=target["max_pages"], 
+        processed_categories=processed_categories
+    )
+
+    driver.quit()
+
+    if error:
+        print(f"something went worng when scraping data for category {target['category']} in reliance digital, please check log and cache files")
+    else:
+        print(f"scraping data finished for category {target['category']} in reliance digital")
+
+    return error
+
+
 def main():
     #Tracks categories to prevent redundant CSV headers.
     processed_categories = set()
@@ -136,10 +162,6 @@ def main():
     ]
 
     logging.basicConfig(filename="logs/reliancedigital_scraping_errors.log", level=logging.ERROR)
-
-    options = webdriver.ChromeOptions()
-    options.add_argument("--headless=new")
-    driver = webdriver.Chrome(options=options)
 
     targets = [
         {
@@ -166,25 +188,21 @@ def main():
                     # ensure that the headers are not written to the csv file as it is not empty
                     processed_categories.add(target["category"])
 
-        print(f"scraping data started for category '{target['category']}' in reliancedigital")
-        error = scrape_data(driver=driver, url=target["url"], category=target["category"], proxies=proxies, max_pages=target["max_pages"], processed_categories=processed_categories)
-        errors.append(error)
+    # Use ThreadPoolExecutor to run scraping in parallel
+    with ThreadPoolExecutor(max_workers=3) as executer:
+        futures = [executer.submit(scrape_wrapper, target, proxies, processed_categories) for target in targets]
 
-        # if no error, then the scraping finished successfully, truncate the cache/reliancedigital_visited_urls.txt
-        if not error:
-            print(f"scraping data finished for category {target['category']} in reliancedigital")
-        else:
-            print(f"something went worng when scraping data for category {target['category']} in reliancedigital, please check log and cache files")
-
+        for future in futures:
+            errors.append(future.result())
+        
     # if no error, then the scraping finished successfully, truncate the cache/reliancedigital_visited_urls.txt
-    if True not in errors:
+    if not any(errors):
         for target in targets:
             if os.path.exists(f"cache/reliancedigital_visited_{target['category']}_urls.txt"):
                 with open(f"cache/reliancedigital_visited_{target['category']}_urls.txt", "w") as f:
                     pass
     
-    driver.quit()
-    print("scraping data finished for reliancedigital")
+    print("scraping data finished for reliance digital")
 
 
 if __name__ == "__main__":

@@ -3,6 +3,7 @@ import random
 import time
 from datetime import datetime
 import logging
+from concurrent.futures import ThreadPoolExecutor
 import os
 from scraping_scripts.headers import headers, user_agents
 from scraping_scripts.utils import get_with_retries, load_visited_urls, save_to_csv, save_visted_url
@@ -160,6 +161,25 @@ def scrape_data(url: str, headers: dict, category: str, max_pages: int, processe
     return is_error
 
 
+def scrape_wrapper(target: dict, processed_categories: set) -> bool:
+    print(f"scraping data started for category {target['category']} in ebay")
+
+    error = scrape_data(
+        url=target["url"], 
+        headers=headers, 
+        category=target['category'], 
+        max_pages=target["max_pages"], 
+        processed_categories=processed_categories
+    )
+
+    if not error:
+        print(f"scraping data finished for category {target['category']} in ebay")
+    else:
+        print(f"something went worng when scraping data for category {target['category']} in ebay, please check log and cache files")
+
+    return error
+
+
 def main():
     #Tracks categories to prevent redundant CSV headers.
     processed_categories = set()
@@ -172,40 +192,37 @@ def main():
         {
             "category": "smartphones",
             "url": "https://www.ebay.com/sch/i.html?_nkw=smartphones&_sacat=0&_from=R40&_pgn=1",
-            "max_pages": 10,
+            "max_pages": 6,
         },
         {
             "category": "laptops",
             "url": "https://www.ebay.com/sch/i.html?_nkw=laptops&_sacat=0&_from=R40&_pgn=1",
-            "max_pages": 10,
+            "max_pages": 6,
         },
         {
             "category": "tablets",
             "url": "https://www.ebay.com/sch/i.html?_nkw=tablets&_sacat=0&_from=R40&_pgn=1",
-            "max_pages": 10,
+            "max_pages": 6,
         }
     ]
 
     for target in targets:
-        print(f"scraping data started for category {target['category']} in ebay")
-
         if os.path.exists(f"data/ebay_{target['category']}.csv"): # if file exists:
             with open(f"data/ebay_{target['category']}.csv", mode="r") as file:
                 if file.read(1): # if file is not empty
                     # ensure that the headers are not written to the csv file as it is not empty
                     processed_categories.add(target['category'])
 
-        error = scrape_data(url=target["url"], headers=headers, category=target['category'], max_pages=target["max_pages"], processed_categories=processed_categories)
-        errors.append(error)
+    # Use ThreadPoolExecutor to run scraping in parallel
+    with ThreadPoolExecutor(max_workers=3) as executer:
+        futures = [executer.submit(scrape_wrapper, target, processed_categories) for target in targets]
 
-        # if no error, then the scraping finished successfully, truncate the cache/ebay_visited_urls.txt
-        if not error:
-            print(f"scraping data finished for category {target['category']} in ebay")
-        else:
-            print(f"something went worng when scraping data for category {target['category']} in ebay, please check log and cache files")
+        for future in futures:
+            errors.append(future.result())
 
+        
     # if no error, then the scraping finished successfully, truncate the cache/ebay_visited_urls.txt
-    if True not in errors:
+    if not any(errors):
         for target in targets:
             if os.path.exists(f"cache/ebay_visited_{target['category']}_urls.txt"):
                 with open(f"cache/ebay_visited_{target['category']}_urls.txt", "w") as f:

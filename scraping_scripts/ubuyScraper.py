@@ -1,9 +1,11 @@
 from selenium import webdriver
 from selenium.webdriver.common.by import By
+from selenium.common.exceptions import TimeoutException
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.common.proxy import Proxy, ProxyType
 from bs4 import BeautifulSoup
+from concurrent.futures import ThreadPoolExecutor
 import random
 import time
 from datetime import datetime
@@ -75,15 +77,18 @@ def scrape_data(driver: object, url: str, category: str, max_pages: int, process
     page_number = 1
     visited_urls = load_visited_urls(file_path=f"cache/ubuy_visited_{category}_urls.txt")
 
+    wait = WebDriverWait(driver, 60)
+
     while True:
         try:
-            driver.get(url)
-
-            wait = WebDriverWait(driver, 30)
-
-            wait.until(EC.presence_of_all_elements_located((By.CSS_SELECTOR, "div[class='col-lg-3 col-md-4 col-sm-6 col-12 p-0 listing-product'] > div[class='product-card mb-0 rounded-0 h-100 d-flex d-sm-block'] > div[class='product-detail'] > a")))
-
-            soup = BeautifulSoup(driver.page_source, "html.parser")
+            for _ in range(3):
+                try:
+                    driver.get(url)
+                    wait.until(EC.presence_of_all_elements_located((By.CSS_SELECTOR, "div[class='col-lg-3 col-md-4 col-sm-6 col-12 p-0 listing-product'] > div[class='product-card mb-0 rounded-0 h-100 d-flex d-sm-block'] > div[class='product-detail'] > a")))
+                    soup = BeautifulSoup(driver.page_source, "html.parser")
+                    break
+                except Exception as e:
+                    print(f"retrying to get the page {page_number} in {category} in ubuy")
 
             products_links = soup.select("div[class='col-lg-3 col-md-4 col-sm-6 col-12 p-0 listing-product'] > div[class='product-card mb-0 rounded-0 h-100 d-flex d-sm-block'] > div[class='product-detail'] > a")
 
@@ -102,7 +107,7 @@ def scrape_data(driver: object, url: str, category: str, max_pages: int, process
                         extract_data(html=driver.page_source, category=category, data=data)
                         break
                     except Exception as e:
-                        print("retrying to get product details")
+                        print(f"retrying to get product details in {category} in ubuy")
                         # print(e, end="\n\n")
         
             save_to_csv(file_path=f"data/ubuy_{category}.csv", data=data, category=category, processed_categories=processed_categories)
@@ -128,6 +133,32 @@ def scrape_data(driver: object, url: str, category: str, max_pages: int, process
     return is_error
 
 
+def scrape_wrapper(target: dict, proxy: Proxy, processed_categories: set) -> bool:
+    options = webdriver.ChromeOptions()
+    options.add_argument("--headless=new")
+    options.proxy = proxy
+    driver = webdriver.Chrome(options=options)
+
+    print(f"scraping data started for category '{target['category']}' in ubuy")
+
+    error = scrape_data(
+        driver=driver, 
+        url=target["url"], 
+        category=target["category"], 
+        max_pages=target["max_pages"], 
+        processed_categories=processed_categories
+    )
+        
+    driver.quit()
+
+    if not error:
+        print(f"scraping data finished for category {target['category']} in ubuy")
+    else:
+        print(f"something went worng when scraping data for category {target['category']} in ubuy, please check log and cache files")
+
+    return error
+    
+
 def main():
     #Tracks categories to prevent redundant CSV headers.
     processed_categories = set()
@@ -137,8 +168,8 @@ def main():
     load_dotenv()
 
     # Access environment variable
-    rotating_proxy_domain_name = os.getenv("ROTATING_PROXY_DOMAINE_NAME_2")
-    rotating_proxy_port = os.getenv("ROTATING_PROXY_PORT_2")
+    rotating_proxy_domain_name = os.getenv("ROTATING_PROXY_DOMAINE_NAME_UBUY")
+    rotating_proxy_port = os.getenv("ROTATING_PROXY_PORT_UBUY")
 
     logging.basicConfig(filename="logs/ubuy_scraping_errors.log", level=logging.ERROR)
 
@@ -147,11 +178,6 @@ def main():
         "httpProxy": f"http://{rotating_proxy_domain_name}:{rotating_proxy_port}",
         "sslProxy": f"http://{rotating_proxy_domain_name}:{rotating_proxy_port}"
     })
-
-    options = webdriver.ChromeOptions()
-    options.add_argument("--headless=new")
-    options.proxy = proxy
-    driver = webdriver.Chrome(options=options)
 
     targets = [
         {
@@ -178,24 +204,21 @@ def main():
                     # ensure that the headers are not written to the csv file as it is not empty
                     processed_categories.add(target["category"])
 
-        print(f"scraping data started for category '{target['category']}' in ubuy")
-        error = scrape_data(driver=driver, url=target["url"], category=target["category"], max_pages=target["max_pages"], processed_categories=processed_categories)
-        errors.append(error)
+    # Use ThreadPoolExecutor to run scraping in parallel
+    with ThreadPoolExecutor(max_workers=3) as executer:
+        futures = [executer.submit(scrape_wrapper, target, proxy, processed_categories) for target in targets]
 
-        # if no error, then the scraping finished successfully, truncate the cache/ubuy_visited_urls.txt
-        if not error:
-            print(f"scraping data finished for category {target['category']} in ubuy")
-        else:
-            print(f"something went worng when scraping data for category {target['category']} in ubuy, please check log and cache files")
+        for future in futures:
+            errors.append(future.result())
 
+        
     # if no error, then the scraping finished successfully, truncate the cache/ubuy_visited_urls.txt
-    if True not in errors:
+    if not any(errors):
         for target in targets:
             if os.path.exists(f"cache/ubuy_visited_{target['category']}_urls.txt"):
                 with open(f"cache/ubuy_visited_{target['category']}_urls.txt", "w") as f:
                     pass
     
-    driver.quit()
     print("scraping data finished for ubuy")
 
 

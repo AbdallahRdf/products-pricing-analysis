@@ -11,22 +11,20 @@ def get_with_retries(url: str, headers: dict, proxies: list = [], withProxy: boo
         load_dotenv()
 
         if len(proxies) > 0:
-            proxy_username = os.getenv("PROXY_USERNAME")
-            proxy_password = os.getenv("PROXY_PASSWORD")
+            proxy_username = os.getenv("PROXY_USERNAME_RELIANCE_DIGITAL")
+            proxy_password = os.getenv("PROXY_PASSWORD_RELIANCE_DIGITAL")
             proxy_address = random.choice(proxies)
         else:
-            rotating_proxy_domain_name = os.getenv("ROTATING_PROXY_DOMAINE_NAME")
-            rotating_proxy_port = os.getenv("ROTATING_PROXY_PORT")
+            rotating_proxy_domain_name = os.getenv("ROTATING_PROXY_DOMAINE_NAME_EBAY")
+            rotating_proxy_port = os.getenv("ROTATING_PROXY_PORT_EBAY")
             proxy_address = f"{rotating_proxy_domain_name}:{rotating_proxy_port}"
-            proxy_username = os.getenv("ROTATING_PROXY_USERNAME")
-            proxy_password = os.getenv("ROTATING_PROXY_PASSWORD")
+            proxy_username = os.getenv("ROTATING_PROXY_USERNAME_EBAY")
+            proxy_password = os.getenv("ROTATING_PROXY_PASSWORD_EBAY")
 
         proxy = {
             "http": f"http://{proxy_username}:{proxy_password}@{proxy_address}",
             "https": f"http://{proxy_username}:{proxy_password}@{proxy_address}"
         }
-
-    print(f"Using proxy: {proxy}")
 
     for attempt in range(retries):
         try:
@@ -54,9 +52,10 @@ def load_visited_urls(file_path: str) -> set:
 def save_to_csv(file_path: str, data: list, category: str, processed_categories: set) -> None:
     if len(data) > 0:
         df = pd.DataFrame(data)
-        header = not (category in processed_categories)
-        df.to_csv(file_path, index=False, mode="a", header=header)
-        processed_categories.add(category) # ensure headers are only written once
+        category_not_in_processed_categories = category not in processed_categories
+        df.to_csv(file_path, index=False, mode="a", header=category_not_in_processed_categories)
+        if category_not_in_processed_categories:
+            processed_categories.add(category) # ensure headers are only written once
         data.clear()
 
 

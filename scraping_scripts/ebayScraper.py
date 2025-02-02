@@ -220,5 +220,7 @@ if __name__ == "__main__":
 
     if not os.path.exists("./cache"):
         os.mkdir("./cache")
-
+        
+    if not os.path.exists("./logs"):
+            os.mkdir("./logs")
     main()

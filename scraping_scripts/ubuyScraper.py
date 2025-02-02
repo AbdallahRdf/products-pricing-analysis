@@ -88,16 +88,16 @@ def scrape_data(driver: object, url: str, category: str, max_pages: int, process
             products_links = soup.select("div[class='col-lg-3 col-md-4 col-sm-6 col-12 p-0 listing-product'] > div[class='product-card mb-0 rounded-0 h-100 d-flex d-sm-block'] > div[class='product-detail'] > a")
 
             for product_link in products_links:
+                link = product_link.get("href").strip() if product_link.get("href") else None
                 # retry 5 times to get the product details
-                if product_link.get("href") in visited_urls:
+                if link in visited_urls:
                     continue
 
                 for _ in range(5):
                     try:
-                        driver.get(product_link.get("href"))
-                        print(product_link.get("href"))
+                        driver.get(link)
                         time.sleep(random.uniform(2, 4))
-                        visited_urls.add(product_link.get("href"))
+                        visited_urls.add(link)
                         wait.until(EC.presence_of_element_located((By.CSS_SELECTOR, "#additional-info tr > td")))
                         extract_data(html=driver.page_source, category=category, data=data)
                         break
@@ -205,5 +205,8 @@ if __name__ == "__main__":
 
     if not os.path.exists("./cache"):
         os.mkdir("./cache")
+        
+    if not os.path.exists("./logs"):
+        os.mkdir("./logs")
 
     main()

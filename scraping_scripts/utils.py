@@ -2,23 +2,32 @@ import requests
 from dotenv import load_dotenv
 import os
 import time
+import random
 import pandas as pd
 
-load_dotenv()
+def get_with_retries(url: str, headers: dict, proxies: list = [], withProxy: bool = True, retries: int = 5, delay: int = 5):
+    proxy = {}
+    if withProxy:
+        load_dotenv()
 
-rotating_proxy_domain_name = os.getenv("ROTATING_PROXY_DOMAINE_NAME_1")
-rotating_proxy_port = os.getenv("ROTATING_PROXY_PORT_1")
-rotating_proxy_username = os.getenv("ROTATING_PROXY_USERNAME_1")
-rotating_proxy_password = os.getenv("ROTATING_PROXY_PASSWORD_1")
+        if len(proxies) > 0:
+            proxy_username = os.getenv("PROXY_USERNAME")
+            proxy_password = os.getenv("PROXY_PASSWORD")
+            proxy_address = random.choice(proxies)
+        else:
+            rotating_proxy_domain_name = os.getenv("ROTATING_PROXY_DOMAINE_NAME")
+            rotating_proxy_port = os.getenv("ROTATING_PROXY_PORT")
+            proxy_address = f"{rotating_proxy_domain_name}:{rotating_proxy_port}"
+            proxy_username = os.getenv("ROTATING_PROXY_USERNAME")
+            proxy_password = os.getenv("ROTATING_PROXY_PASSWORD")
 
+        proxy = {
+            "http": f"http://{proxy_username}:{proxy_password}@{proxy_address}",
+            "https": f"http://{proxy_username}:{proxy_password}@{proxy_address}"
+        }
 
-proxy = {
-    "http": f"http://{rotating_proxy_username}:{rotating_proxy_password}@{rotating_proxy_domain_name}:{rotating_proxy_port}",
-    "https": f"http://{rotating_proxy_username}:{rotating_proxy_password}@{rotating_proxy_domain_name}:{rotating_proxy_port}"
-}
+    print(f"Using proxy: {proxy}")
 
-
-def get_with_retries(url: str, headers: dict, withProxy: bool = True, retries: int = 5, delay: int = 5):
     for attempt in range(retries):
         try:
             if withProxy:

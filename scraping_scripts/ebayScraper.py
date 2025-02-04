@@ -19,6 +19,8 @@ def extract_data(html: str, category: str, data: list):
         brand = soup.select_one('[class="ux-labels-values ux-labels-values--inline col-6 ux-labels-values--marke"] > [class="ux-labels-values__values"]')
     if not brand:
         brand = soup.select_one('[class="ux-labels-values ux-labels-values--inline col-6 ux-labels-values--marca"] > [class="ux-labels-values__values"]')
+    if not brand:
+        brand = soup.select_one('[class="ux-labels-values ux-labels-values--inline col-6 ux-labels-values__column-last-row ux-labels-values--brand"] > [class="ux-labels-values__values"]')
     brand = brand.text.strip() if brand else None
 
     model = soup.select_one('[class="ux-labels-values ux-labels-values--inline col-6 ux-labels-values--model"] > [class="ux-labels-values__values"]')
@@ -28,6 +30,8 @@ def extract_data(html: str, category: str, data: list):
         model = soup.select_one('[class="ux-labels-values ux-labels-values--inline col-6 ux-labels-values--modell"] > [class="ux-labels-values__values"]')
     if not model:
         model = soup.select_one('[class="ux-labels-values ux-labels-values--inline col-6 ux-labels-values--modello"] > [class="ux-labels-values__values"]')
+    if not model:
+        model = soup.select_one('[class="ux-labels-values ux-labels-values--inline col-6 ux-labels-values__column-last-row ux-labels-values--model"] > [class="ux-labels-values__values"]')
     model = model.text.strip() if model else None
     
     processor = soup.select_one('[class="ux-labels-values ux-labels-values--inline col-6 ux-labels-values--processor"] > [class="ux-labels-values__values"]')
@@ -178,17 +182,17 @@ def main():
         {
             "category": "smartphones",
             "url": "https://www.ebay.com/sch/i.html?_nkw=smartphones&_sacat=0&_from=R40&_pgn=1",
-            "max_pages": 4,
+            "max_pages": 6,
         },
         {
             "category": "laptops",
             "url": "https://www.ebay.com/sch/i.html?_nkw=laptops&_sacat=0&_from=R40&_pgn=1",
-            "max_pages": 4,
+            "max_pages": 6,
         },
         {
             "category": "tablets",
             "url": "https://www.ebay.com/sch/i.html?_nkw=tablets&_sacat=0&_from=R40&_pgn=1",
-            "max_pages": 4,
+            "max_pages": 6,
         }
     ]
 
@@ -210,9 +214,9 @@ def main():
     # if no error, then the scraping finished successfully, truncate the cache/ebay_visited_urls.txt
     if not any(errors):
         for target in targets:
-            if os.path.exists(f"cache/ebay_visited_{target['category']}_urls.txt"):
-                with open(f"cache/ebay_visited_{target['category']}_urls.txt", "w") as f:
-                    pass
+            cache_file = f"cache/ebay_visited_{target['category']}_urls.txt"
+            if os.path.exists(cache_file):
+                os.remove(cache_file)
     
     print("scraping data finished for ebay")
 

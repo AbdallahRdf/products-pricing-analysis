@@ -36,5 +36,5 @@ if __name__ == "__main__":
             print(f"Error joining thread {thread.name}: {e}")
 
     print("All scraping threads have finished.")
-    print("\n that took:")
+    print("\ntotal time it took:")
     print(datetime.now() - start)

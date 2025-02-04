@@ -226,9 +226,9 @@ def main():
     # if no error, then the scraping finished successfully, truncate the cache/flipkart_visited_urls.txt
     if not any(errors):
         for target in targets:
-            if os.path.exists(f"cache/flipkart_visited_{target['category']}_urls.txt"):
-                with open(f"cache/flipkart_visited_{target['category']}_urls.txt", "w") as f:
-                    pass
+            cache_file = f"cache/flipkart_visited_{target['category']}_urls.txt"
+            if os.path.exists(cache_file):
+                os.remove(cache_file)
     
     print("scraping data finished for flipkart")
 

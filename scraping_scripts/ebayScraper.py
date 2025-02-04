@@ -30,17 +30,6 @@ def extract_data(html: str, category: str, data: list):
         model = soup.select_one('[class="ux-labels-values ux-labels-values--inline col-6 ux-labels-values--modello"] > [class="ux-labels-values__values"]')
     model = model.text.strip() if model else None
     
-    screen_size = soup.select_one('[class="ux-labels-values ux-labels-values--inline col-6 ux-labels-values--screenSize"] > [class="ux-labels-values__values"]')
-    if not screen_size:
-        screen_size = soup.select_one('[class="ux-labels-values ux-labels-values--inline col-6 ux-labels-values--itemWidth"] > [class="ux-labels-values__values"]')
-    if not screen_size:
-        screen_size = soup.select_one('[class="ux-labels-values col-6 ux-labels-values--tailleD\'écran"] > [class="ux-labels-values__values"]')
-    if not screen_size:
-        screen_size = soup.select_one('[class="ux-labels-values ux-labels-values--inline col-6 ux-labels-values__column-last-row ux-labels-values--bildschirmgröße"] > [class="ux-labels-values__values"]')
-    if not screen_size:
-        screen_size = soup.select_one('[class="ux-labels-values ux-labels-values--inline col-6 ux-labels-values--dimensioniSchermo"] > [class="ux-labels-values__values"]')
-    screen_size = screen_size.text.strip() if screen_size else None
-
     processor = soup.select_one('[class="ux-labels-values ux-labels-values--inline col-6 ux-labels-values--processor"] > [class="ux-labels-values__values"]')
     if not processor:
         processor = soup.select_one('[class="ux-labels-values col-6 ux-labels-values--processeur"] > [class="ux-labels-values__values"]')
@@ -87,7 +76,6 @@ def extract_data(html: str, category: str, data: list):
     data.append({
         "brand": brand,
         "model": model,
-        "screen_size": screen_size,
         "processor": processor,
         "ram": ram,
         "storage": storage,
@@ -106,7 +94,7 @@ def scrape_data(url: str, headers: dict, category: str, max_pages: int, processe
     page_number = 1
     visited_urls = load_visited_urls(file_path=f"cache/ebay_visited_{category}_urls.txt")
 
-    while True:
+    while page_number <= max_pages:
         try:
             response = get_with_retries(url, headers=headers)
             if response.status_code != 200:
@@ -128,7 +116,7 @@ def scrape_data(url: str, headers: dict, category: str, max_pages: int, processe
                 a_tag_href = a_tag.get("href").strip()
 
                 if a_tag_href in visited_urls:
-                    print(f"Skipping already visited page: {a_tag_href}")
+                    # print(f"Skipping already visited page: {a_tag_href}")
                     continue
 
                 time.sleep(random.uniform(4, 8))
@@ -143,8 +131,6 @@ def scrape_data(url: str, headers: dict, category: str, max_pages: int, processe
 
             # Move to the next page
             page_number += 1
-            if page_number > max_pages:
-                break
             url = url.replace(f"_pgn={page_number-1}", f"_pgn={page_number}")
 
         except Exception as e:
@@ -192,17 +178,17 @@ def main():
         {
             "category": "smartphones",
             "url": "https://www.ebay.com/sch/i.html?_nkw=smartphones&_sacat=0&_from=R40&_pgn=1",
-            "max_pages": 6,
+            "max_pages": 4,
         },
         {
             "category": "laptops",
             "url": "https://www.ebay.com/sch/i.html?_nkw=laptops&_sacat=0&_from=R40&_pgn=1",
-            "max_pages": 6,
+            "max_pages": 4,
         },
         {
             "category": "tablets",
             "url": "https://www.ebay.com/sch/i.html?_nkw=tablets&_sacat=0&_from=R40&_pgn=1",
-            "max_pages": 6,
+            "max_pages": 4,
         }
     ]
 

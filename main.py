@@ -1,9 +1,9 @@
 import os
 import threading
 from datetime import datetime
-from scraping_scripts.ubuyScraper import main as ubuy_main
 from scraping_scripts.ebayScraper import main as ebay_main
 from scraping_scripts.reliancedigitalScraper import main as reliancedigital_main
+from scraping_scripts.flipkartScraper import main as flipkart_main
 
 if __name__ == "__main__":
     start = datetime.now()
@@ -18,7 +18,7 @@ if __name__ == "__main__":
         os.mkdir("./logs")
 
     scraper_threads = [
-        threading.Thread(target=ubuy_main),
+        threading.Thread(target=flipkart_main),
         threading.Thread(target=ebay_main),
         threading.Thread(target=reliancedigital_main),
     ]

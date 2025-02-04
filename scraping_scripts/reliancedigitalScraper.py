@@ -17,7 +17,7 @@ def extract_data(html: str, category: str, data: list):
     rows = soup.select("#pdp__specification > section > ul > div")
 
     # Initialize variables with default values
-    brand = model = screen_size = processor = ram = storage = None    
+    brand = model = processor = ram = storage = None    
 
     columns = {}
     for row in rows:
@@ -31,7 +31,6 @@ def extract_data(html: str, category: str, data: list):
     model = columns.get("Model") or columns.get("Series")
     if columns.get("Series") and columns.get("Model"):
         model = f"{columns.get('Series')} {columns.get('Model')}"
-    screen_size = columns.get("Screen Size (Diagonal)")
     ram = columns.get("Memory (RAM)")
     storage = columns.get("Hard Drive") or columns.get("Internal Storage")
     processor = columns.get("Processor")
@@ -47,7 +46,6 @@ def extract_data(html: str, category: str, data: list):
     data.append({
         "brand": brand,
         "model": model,
-        "screen_size": screen_size,
         "processor": processor,
         "ram": ram,
         "storage": storage,
@@ -91,9 +89,8 @@ def scrape_data(driver: object, url: str, category: str, proxies: list, max_page
                         extract_data(html=response.text, category=category, data=data)
                         break
                     except Exception as e:
-                        print("retrying to get product details")
-                        print(e, end="\n\n")
-        
+                        pass
+
             save_to_csv(file_path=f"data/reliancedigital_{category}.csv", data=data, category=category, processed_categories=processed_categories)
             save_visted_url(file_path=f"cache/reliancedigital_visited_{category}_urls.txt", visited_urls=visited_urls)
             
@@ -167,17 +164,17 @@ def main():
         {
             "category": "smartphones",
             "url": "https://www.reliancedigital.in/smartphones/c/S101711?searchQuery=:relevance&page=0",
-            "max_pages": 8
+            "max_pages": 9
         },
         {
             "category": "laptops",
             "url": "https://www.reliancedigital.in/laptops/c/S101210?searchQuery=:relevance:availability:Exclude%20out%20of%20Stock&page=0",
-            "max_pages": 8
+            "max_pages": 9
         },
         {
             "category": "tablets",
             "url": "https://www.reliancedigital.in/tablets/c/S101712?searchQuery=:relevance&page=0",
-            "max_pages": 8
+            "max_pages": 9
         }
     ]
 

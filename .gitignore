@@ -171,5 +171,7 @@ cython_debug/
 .pypirc
 
 data/
+cleaned_data/
 *.csv
 cache/
+web_scraper_cron.sh

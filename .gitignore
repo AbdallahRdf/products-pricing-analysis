@@ -175,3 +175,5 @@ cleaned_data/
 *.csv
 cache/
 web_scraper_cron.sh
+*.pdf
+code_de_projet_notebook.ipynb

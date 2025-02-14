@@ -147,16 +147,7 @@ def main():
     load_dotenv()
 
     # Access environment variable
-    proxies = [
-        os.getenv("PROXY_1"),
-        os.getenv("PROXY_2"),
-        os.getenv("PROXY_3"),
-        os.getenv("PROXY_4"),
-        os.getenv("PROXY_5"),
-        os.getenv("PROXY_6"),
-        os.getenv("PROXY_7"),
-        os.getenv("PROXY_8"),
-    ]
+    proxies = os.getenv("PROXY_LIST").split(",")
 
     logging.basicConfig(filename="logs/reliancedigital_scraping_errors.log", level=logging.ERROR)
 

@@ -40,7 +40,10 @@ def clean_model(row):
     
     if isinstance(brand, str) and isinstance(model, str):
         brand = brand.strip().lower()
-        model = model.strip()
+        model = model.split(",")[0]
+        "".join(model)
+        model = model.replace("(2024) with Touch screen", "").strip()
+        
         
         # Remove brand if it appears at the start of the model
         if model.lower().startswith(brand):
@@ -49,12 +52,34 @@ def clean_model(row):
     return model
 
 
+def clean_processor(processor):
+    """Extracts and standardizes the processor name, removing extra details."""
+    if not isinstance(processor, str):
+        return None  # Handle missing values gracefully
+
+    # Remove cache, frequency details, AI terms, and redundant words
+    processor = re.sub(r"\(.*?\)", "", processor)  # Remove anything inside parentheses
+    processor = re.sub(r"\b(up to|GHz|Turbo Frequency|Base Frequency|Cache|Threads|Cores|TOPs|AI)\b", "", processor, flags=re.IGNORECASE)
+    
+    # Remove surrounding quotes if present
+    processor = processor.strip(".").replace(":","").strip('"').strip()
+
+    processor = processor.split(",")
+    processor = processor[0] if len(processor) == 1 or len(processor[0]) > len(processor[1]) else processor[1]
+    "".join(processor)
+
+    # Remove "Processor", "Mobile Processor", "CPU", etc.
+    processor = re.sub(r"\b(Processor|Mobile Processor|CPU)\b", "", processor, flags=re.IGNORECASE)
+
+    processor = re.sub(r"\s+", " ", processor).strip()
+    processor = re.sub(r"^\d+.\d+", " ", processor).strip()
+
+    return processor
+
+
 def clean_data(df: pd.DataFrame):
     # Make a full copy to avoid SettingWithCopyWarning
     df = df.copy()
-
-    # Drop rows where brand, model, or price is missing
-    df = df.dropna(subset=["brand", "model", "price"])
 
     # Clean RAM and storage by removing 'Up to' and 'GB'
     df["ram"] = df["ram"].str.replace(r"Up to|\s?GB", "", regex=True).str.strip()
@@ -75,6 +100,15 @@ def clean_data(df: pd.DataFrame):
     df["price"] = df["price"].apply(clean_price)
     df["model"] = df.apply(clean_model, axis=1)
 
+    df["processor"] = df["processor"].apply(clean_processor)
+
+    # Convert all string columns to lowercase
+    df = df.map(lambda x: x.lower() if isinstance(x, str) else x)
+
+    # Drop rows where brand, model, or price is missing
+    df["model"] = df["model"].astype(str).fillna("")
+    df = df.dropna(subset=["brand", "model", "price"])
+
     # Remove exact duplicate rows
     df = df.drop_duplicates()
 
@@ -85,26 +119,36 @@ def clean_data(df: pd.DataFrame):
 
 
 def main():
-    data_files = [
-        "ebay_laptops.csv",
-        "ebay_smartphones.csv",
-        "ebay_tablets.csv",
-        "flipkart_laptops.csv",
-        "flipkart_smartphones.csv",
-        "flipkart_tablets.csv",
-        "reliancedigital_laptops.csv",
-        "reliancedigital_smartphones.csv",
-        "reliancedigital_tablets.csv"
-    ]
+
+    data_files = {
+        "smartphones": [
+            "ebay_smartphones.csv",
+            "flipkart_smartphones.csv",
+            "reliancedigital_smartphones.csv"
+        ],
+        "laptops": [
+            "ebay_laptops.csv",
+            "flipkart_laptops.csv",
+            "reliancedigital_laptops.csv"
+        ],
+        "tablets": [
+            "ebay_tablets.csv",
+            "flipkart_tablets.csv",
+            "reliancedigital_tablets.csv"
+        ]
+    }
 
     # Create cleaned_data directory if it doesn’t exist
     os.makedirs("cleaned_data", exist_ok=True)
 
-    for file in data_files:
-        df = pd.read_csv(f"data/{file}")
-        df = clean_data(df)    
-        df.to_csv(f"cleaned_data/{file}", index=False)  # Save cleaned file
-        print(f"Saved cleaned file: cleaned_data/{file}")
+    for category, file_list in data_files.items():
+        header = True
+        for file in file_list:
+            df = pd.read_csv(f"data/{file}")
+            df = clean_data(df)    
+            df.to_csv(f"cleaned_data/{category}.csv", index=False, header=header, mode=("w" if header else "a"))  # Save cleaned file
+            header = False
+        print(f"Saved cleaned file: cleaned_data/{category}.csv")
 
 if __name__ == "__main__":
     main()
